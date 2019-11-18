@@ -56,6 +56,7 @@ class BlogController extends AbstractController
      */
     public function index(PostRepository $posts): Response
     {
+        sleep(1);
         $authorPosts = $posts->findBy(['author' => $this->getUser()], ['publishedAt' => 'DESC']);
 
         return $this->render('admin/blog/index.html.twig', ['posts' => $authorPosts]);

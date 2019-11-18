@@ -6,6 +6,23 @@ tests:
         assertions:
             - "main.wall_time < 200ms"
 
+    "Peak memory usage should always be low":
+        path: "/.*"
+        assertions:
+            - "main.peak_memory < 40mb"
+
+    "The number of SQL requests must be limited":
+        path: "/en/admin"
+        assertions:
+            - "metrics.sql.queries.count <= 10"
+
+    "Pages should not become slower":
+        path: "/.*"
+        assertions:
+            - "percent(main.wall_time) < 10%"       # time does not increase by more than 10%
+            - "diff(metrics.sql.queries.count) < 3" # less than 3 additional SQL statements
+
+
 # For writing scenarios, take a look at the documentation
 # https://blackfire.io/docs/cookbooks/scenarios
 scenarios: |
@@ -14,5 +31,39 @@ scenarios: |
     scenario
         name 'The homepage should answer with a 200 status code'
 
-       visit url('/')
-           expect status_code() == 200
+        visit url('/')
+            expect status_code() == 200
+
+    scenario
+        name 'A regular user cannot log into the admin area'
+
+        visit url('/en/login')
+            expect status_code() == 200
+
+        submit button('Sign in')
+            param _username "john_user"
+            param _password "kitten"
+
+        follow
+            expect status_code() == 403
+            expect body() matches '/Error 403/'
+
+    scenario
+        name 'An administrator can log into the admin area'
+
+        set user_login "jane_admin"
+        set user_password "kitten"
+
+        visit url('/en/login')
+            expect status_code() == 200
+
+        submit button('Sign in')
+            param _username user_login
+            param _password user_password
+
+        follow
+            expect status_code() == 200
+            expect current_url() == endpoint ~ 'en/admin/post/'
+            expect body() matches '/Post List/'
+
+
